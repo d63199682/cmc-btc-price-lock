@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard | {{ config.event_name }}{% endblock %}
+
+{% block body_class %}page-dashboard{% endblock %}
+
+{% block content %}
+<div class="app-shell dashboard-shell" data-page="dashboard">
+  <header class="dashboard-header-grid">
+    <div class="brand-block brand-block-dashboard">
+      <img src="/static/assets/cmc-logo.png" alt="CMC Markets" class="brand-logo">
+      <div>
+        <div class="eyebrow">CMC Markets Bermuda</div>
+        <div class="event-name">BTC Price Lock Live Dashboard</div>
+      </div>
+    </div>
+
+    <section class="event-marquee glass-card">
+      <div class="event-marquee-top">
+        <span class="event-marquee-pill">{{ config.event_series_name }}</span>
+        <span class="event-marquee-date">{{ config.event_date_display }}</span>
+      </div>
+      <div class="event-marquee-title">By {{ config.event_partner_name }}</div>
+      <div class="event-marquee-copy">{{ config.event_support_copy }} · {{ config.event_location }}</div>
+    </section>
+
+    <div class="dashboard-stat-row">
+      <div class="dashboard-stat dashboard-stat-live">
+        <span>Live BTC/USD Price</span>
+        <strong id="boardLivePrice">—</strong>
+        <small>updates every minute</small>
+      </div>
+      <div class="dashboard-stat">
+        <span>Entries close</span>
+        <strong id="boardLockCountdown">—</strong>
+      </div>
+      <div class="dashboard-stat">
+        <span>Final result</span>
+        <strong id="boardFinalCountdown">—</strong>
+      </div>
+      <div class="dashboard-stat">
+        <span>Last update</span>
+        <strong id="boardLastUpdate">—</strong>
+      </div>
+    </div>
+  </header>
+
+  <main class="dashboard-layout dashboard-layout-v3">
+    <section class="dashboard-side left-side glass-card">
+      <div class="side-head compact-head">
+        <div class="eyebrow">Join now</div>
+        <h2>Scan to enter</h2>
+      </div>
+      <div class="qr-frame qr-frame-large">
+        <img src="/api/qr.png" alt="Entry QR code" class="qr-image" id="dashboardQrImage">
+      </div>
+      <ol class="qr-steps" id="qrSteps">
+        {% for step in config.qr_steps %}
+        <li>{{ step }}</li>
+        {% endfor %}
+      </ol>
+      <div class="entry-state-banner" id="entryStateBanner">Entries are open — scan the QR code now</div>
+      <div class="side-copy" id="dashboardSaturdayCopy">{{ config.saturday_copy }}</div>
+    </section>
+
+    <section class="leaderboard-panel glass-card leaderboard-panel-v3">
+      <div class="leaderboard-head leaderboard-head-v3">
+        <div>
+          <div class="eyebrow" id="leaderboardEyebrow">Current leaders</div>
+          <h2 id="leaderboardTitle">Closest to the live BTC/USD market right now</h2>
+          <p class="leaderboard-subcopy" id="leaderboardSubcopy">Live BTC/USD Price updates every minute. Final winner locks at 11:00 PM.</p>
+        </div>
+        <div class="topline-badge" id="winnerBadge"><span class="badge-icon" aria-hidden="true">🏆</span> Winner updates at 11:00 PM</div>
+      </div>
+
+      <div class="leaderboard-assumption">
+        <strong>Example used for every row:</strong> Bitcoin · 10 BTC position · $150 spread cost
+      </div>
+
+      <div class="leaderboard-table-wrap leaderboard-table-wrap-fixed">
+        <table class="leaderboard-table leaderboard-table-compact">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>Display Name</th>
+              <th>Prediction</th>
+              <th>Direction</th>
+              <th>Position Value</th>
+              <th>Cash Needed</th>
+              <th>Cost</th>
+              <th>P/L</th>
+              <th>ROI</th>
+            </tr>
+          </thead>
+          <tbody id="leaderboardBody">
+            <tr>
+              <td colspan="9" class="empty-row">Waiting for the first predictions…</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="ticker-bar ticker-bar-compact">
+        <div class="ticker-label">Latest activity</div>
+        <div class="ticker-track" id="tickerTrack"></div>
+      </div>
+
+      <div class="dashboard-footnote dashboard-footnote-compact">
+        <div class="disclaimer-title">Educational trade example</div>
+        <p id="dashboardExampleCopy">{{ config.example_copy }}</p>
+      </div>
+    </section>
+
+    <section class="dashboard-side right-side glass-card prize-side">
+      <div class="side-head compact-head">
+        <div class="eyebrow">Prize spotlight</div>
+        <h2>Black Yamaha RAY-ZR 125cc Hybrid</h2>
+      </div>
+      <img src="/static/assets/black-scooter.png" alt="Black Yamaha RAY-ZR 125cc Hybrid" class="prize-image prize-image-main">
+      <div class="prize-note">Row one becomes the scooter winner at 11:00 PM once the official BTC/USD reference price is locked.</div>
+      <div class="mini-rule-list compact" id="dashboardRules"></div>
+      <footer class="footer-note" id="dashboardFooter">{{ config.dashboard_footer }}</footer>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/dashboard.js"></script>
+{% endblock %}

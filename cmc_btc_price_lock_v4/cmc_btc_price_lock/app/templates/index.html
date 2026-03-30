@@ -1,0 +1,283 @@
+{% extends "base.html" %}
+
+{% block title %}Enter | {{ config.event_name }}{% endblock %}
+
+{% block body_class %}page-entry{% endblock %}
+
+{% block content %}
+<div class="app-shell entry-shell" data-page="entry" data-entry-open="{{ 'true' if entry_open else 'false' }}" data-entry-lock-iso="{{ entry_lock_iso }}" data-final-time-iso="{{ final_time_iso }}" data-now-iso="{{ now_iso }}">
+  <header class="topbar entry-topbar">
+    <div class="brand-block">
+      <img src="/static/assets/cmc-logo.png" alt="CMC Markets" class="brand-logo">
+      <div>
+        <div class="eyebrow">CMC Markets Bermuda</div>
+        <div class="event-name">BTC Price Lock</div>
+      </div>
+    </div>
+    <div class="topbar-stack">
+      <div class="event-mini-pill">{{ config.event_series_name }} · {{ config.event_date_display }}</div>
+      <div class="topbar-pill" id="statusBadge">{{ config.status_badge_copy }}</div>
+    </div>
+  </header>
+
+  <main class="entry-layout">
+    <section class="hero-panel glass-card">
+      <div class="event-ribbon">
+        <div class="event-ribbon-text">
+          <div class="event-ribbon-kicker">{{ config.event_series_name }}</div>
+          <div class="event-ribbon-title">By {{ config.event_partner_name }}</div>
+          <div class="event-ribbon-copy">{{ config.event_support_copy }} · {{ config.event_location }}</div>
+        </div>
+        <div class="event-ribbon-date">{{ config.event_date_display }}</div>
+      </div>
+
+      <div class="hero-content">
+        <h1>Predict BTC/USD at 11:00 PM and win a Yamaha scooter.</h1>
+
+        <div class="hero-spotlight">
+          <div class="hero-spotlight-visual">
+            <img src="/static/assets/black-scooter.png" alt="Black Yamaha RAY-ZR 125cc Hybrid" class="scooter-hero">
+          </div>
+          <div class="hero-spotlight-copy">
+            <div class="prize-meta">Prize spotlight</div>
+            <h2>{{ config.prize_title }}</h2>
+            <p>The closest eligible prediction at 11:00 PM wins. On the live dashboard, row one becomes the scooter winner once the official BTC/USD reference price is locked.</p>
+            <div class="mini-rule-list mini-rule-tight compact-mini-rules">
+              <div>One active entry per person</div>
+              <div>Edits allowed until 10:00 PM</div>
+              <div>Duplicate prices blocked</div>
+            </div>
+          </div>
+        </div>
+
+        <p class="hero-copy">{{ config.hero_copy }}</p>
+
+        <div class="chip-row hero-chip-row hero-chip-row-tight">
+          <span class="chip chip-accent">Educational</span>
+          <span class="chip">18+</span>
+        </div>
+
+        <div class="hero-grid">
+          <article class="info-card">
+            <div class="info-label">Why Bitcoin tonight?</div>
+            <p>{{ config.saturday_copy }}</p>
+          </article>
+          <article class="info-card">
+            <div class="info-label">Live market example</div>
+            <p>{{ config.example_copy }}</p>
+          </article>
+          <article class="info-card">
+            <div class="info-label">Market awareness</div>
+            <p>{{ config.education_copy }}</p>
+          </article>
+        </div>
+
+        <div class="countdown-strip">
+          <div class="countdown-card">
+            <span>Entries close</span>
+            <strong id="entryCountdown">--:--:--</strong>
+          </div>
+          <div class="countdown-card">
+            <span>Final reference</span>
+            <strong id="finalCountdown">--:--:--</strong>
+          </div>
+          <div class="countdown-card countdown-card-live">
+            <span>Live BTC/USD Price</span>
+            <strong id="livePrice">${{ "{0:,.2f}".format(live_price) }}</strong>
+            <small>updates every minute</small>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="form-panel glass-card">
+      <div class="form-brand-strip">
+        <div>
+          <div class="eyebrow">{{ config.event_series_name }} · {{ config.event_date_display }}</div>
+          <p>{{ config.event_partner_name }} · {{ config.event_support_copy }}</p>
+        </div>
+      </div>
+
+      <div class="form-head form-head-simple">
+        <div>
+          <div class="eyebrow">Enter the activation</div>
+          <h2>Register and submit your BTC/USD prediction</h2>
+        </div>
+      </div>
+
+      <div class="inline-note">
+        Use your real contact details. Your public display name is what will appear on venue screens. Phones and browsers should recognise the fields below for quick autofill.
+      </div>
+
+      <div class="alert" id="formAlert" hidden></div>
+
+      <form id="entryForm" class="entry-form" novalidate>
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>First name</span>
+            <input name="first_name" autocomplete="given-name" required maxlength="80">
+          </label>
+          <label class="field">
+            <span>Last name</span>
+            <input name="last_name" autocomplete="family-name" required maxlength="80">
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Public display name</span>
+            <input name="display_name" autocomplete="nickname" maxlength="32" data-auto-display="true">
+          <small class="field-subnote">Defaults to your first name and last initial. You can change it.</small>
+          </label>
+          <label class="field field-with-helper">
+            <span>Email</span>
+            <input name="email" type="email" autocomplete="email" required maxlength="120">
+            <small>Used for winner notification and important event updates only.</small>
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Mobile number</span>
+            <input name="phone" type="tel" autocomplete="tel" placeholder="+1 441 555 0100" required maxlength="32">
+          </label>
+          <label class="field">
+            <span>Country of residence</span>
+            <select name="country" required>
+              <option value="Bermuda" selected>Bermuda</option>
+            </select>
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Industry</span>
+            <select name="industry" required>
+              <option value="" selected disabled>Select your industry</option>
+              {% for choice in industry_choices %}
+              <option value="{{ choice }}">{{ choice }}</option>
+              {% endfor %}
+            </select>
+          </label>
+          <label class="field">
+            <span>Prediction: BTC/USD at 11:00 PM</span>
+            <input name="prediction" inputmode="decimal" placeholder="66000.01" required>
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Company</span>
+            <input name="company" autocomplete="organization" maxlength="120">
+          </label>
+          <label class="field">
+            <span>Job title</span>
+            <input name="job_title" autocomplete="organization-title" maxlength="120">
+          </label>
+        </div>
+
+        <fieldset class="interest-block">
+          <legend>Product interest</legend>
+          <div class="chip-select-row">
+            {% for choice in product_interest_choices %}
+            <label class="toggle-chip">
+              <input type="checkbox" name="product_interest" value="{{ choice }}">
+              <span>{{ choice }}</span>
+            </label>
+            {% endfor %}
+          </div>
+        </fieldset>
+
+        <div class="consent-block">
+          <label class="checkbox-line required-line">
+            <input type="checkbox" name="confirm_resident_age" required>
+            <span>I confirm I am a Bermuda resident and at least 18 years old.</span>
+          </label>
+          <label class="checkbox-line required-line">
+            <input type="checkbox" name="accept_rules" required>
+            <span>I agree to the Rules and Privacy Notice.</span>
+          </label>
+          <label class="checkbox-line required-line">
+            <input type="checkbox" name="consent_admin" required>
+            <span>I consent to CMC Markets Bermuda using my information to administer this activation and contact me if I win.</span>
+          </label>
+          {% if config.marketing_opt_in_enabled %}
+          <label class="checkbox-line optional-line">
+            <input type="checkbox" name="marketing_opt_in">
+            <span>Yes, I would like to hear about future CMC Markets Bermuda events, insights, products and services.</span>
+          </label>
+          {% endif %}
+        </div>
+
+        <div class="notice-box">
+          <div class="notice-title">Privacy Notice</div>
+          <p>{{ config.privacy_notice }}</p>
+        </div>
+
+        <details class="rules-panel">
+          <summary>View rules summary</summary>
+          <ul>
+            {% for rule in config.rules %}
+            <li>{{ rule }}</li>
+            {% endfor %}
+          </ul>
+        </details>
+
+        <div class="form-actions form-actions-stacked-mobile">
+          <button type="submit" class="primary-button" id="submitButton">Submit prediction</button>
+          <span class="helper-text" id="formHelper">You can update your prediction until 10:00 PM Hamilton time using the same email and phone number.</span>
+        </div>
+      </form>
+
+      <section class="confirmation-panel" id="confirmationPanel" hidden>
+        <div class="confirmation-head">
+          <div class="eyebrow">Prediction confirmed</div>
+          <h3>Your entry is live on the board.</h3>
+          <p class="helper-text confirmation-intro">Here is what your live BTC idea would look like in simple terms.</p>
+        </div>
+        <div class="confirmation-grid confirmation-grid-story">
+          <div class="confirmation-card confirmation-card-story">
+            <span>Display name</span>
+            <strong id="confirmDisplayName">—</strong>
+            <small>This is the name that appears on the public leaderboard.</small>
+          </div>
+          <div class="confirmation-card confirmation-card-story">
+            <span>BTC/USD when you entered</span>
+            <strong id="confirmEntryPrice">—</strong>
+            <small id="confirmEntryHelp">This was the live Bitcoin price when you locked your idea.</small>
+          </div>
+          <div class="confirmation-card confirmation-card-story">
+            <span>Your 11:00 PM price call</span>
+            <strong id="confirmPrediction">—</strong>
+            <small>This is the number that will be scored at 11:00 PM.</small>
+          </div>
+          <div class="confirmation-card confirmation-card-story">
+            <span>Direction</span>
+            <strong id="confirmDirection">—</strong>
+            <small id="confirmDirectionHelp">—</small>
+          </div>
+          <div class="confirmation-card confirmation-card-story">
+            <span>Cash needed</span>
+            <strong id="confirmMargin">—</strong>
+            <small id="confirmMarginHelp">—</small>
+          </div>
+          <div class="confirmation-card confirmation-card-story">
+            <span>Cost of trade</span>
+            <strong id="confirmCost">—</strong>
+            <small id="confirmCostHelp">—</small>
+          </div>
+        </div>
+        <p class="helper-text">Only your latest valid prediction before 10:00 PM counts. Duplicate price points are not allowed.</p>
+        <div class="confirmation-actions">
+          <button class="secondary-button" id="editAgainButton" type="button">Adjust my prediction</button>
+          <a href="/dashboard" class="secondary-button link-button">View the public dashboard</a>
+        </div>
+      </section>
+    </section>
+  </main>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script src="/static/js/entry.js"></script>
+{% endblock %}

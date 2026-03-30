@@ -1,0 +1,227 @@
+{% extends "base.html" %}
+
+{% block title %}Admin | {{ config.event_name }}{% endblock %}
+
+{% block body_class %}page-admin{% endblock %}
+
+{% block content %}
+<div class="app-shell admin-shell" data-page="admin" data-authenticated="{{ 'true' if authenticated else 'false' }}">
+  <header class="topbar">
+    <div class="brand-block">
+      <img src="/static/assets/cmc-logo.png" alt="CMC Markets" class="brand-logo">
+      <div>
+        <div class="eyebrow">Private console</div>
+        <div class="event-name">BTC Price Lock Admin</div>
+      </div>
+    </div>
+    {% if authenticated %}
+    <form method="post" action="/admin/logout">
+      <button class="secondary-button small-button" type="submit">Log out</button>
+    </form>
+    {% endif %}
+  </header>
+
+  {% if not authenticated %}
+  <main class="admin-login-wrap glass-card">
+    <div class="eyebrow">Protected access</div>
+    <h1>Sign in to the admin console</h1>
+    <p>Use the event admin password to manage settings, review leads, export data, and lock the final reference price if needed.</p>
+    <form method="post" action="/admin/login" class="admin-login-form">
+      <label class="field">
+        <span>Password</span>
+        <input type="password" name="password" required>
+      </label>
+      <button class="primary-button" type="submit">Enter admin console</button>
+    </form>
+    {% if request.query_params.get('error') %}
+    <div class="alert error">Incorrect password.</div>
+    {% endif %}
+  </main>
+  {% else %}
+  <main class="admin-layout">
+    <section class="admin-panel glass-card">
+      <div class="panel-head">
+        <div>
+          <div class="eyebrow">Event control</div>
+          <h2>Timing, branding, rules, and price source</h2>
+        </div>
+      </div>
+      <div class="alert" id="adminAlert" hidden></div>
+      <form id="adminConfigForm" class="admin-form">
+        <div class="field-grid two-col">
+          <label class="field field-with-helper">
+            <span>Public entry URL</span>
+            <input name="public_base_url" value="{{ config.public_base_url or '' }}" placeholder="https://play.yourdomain.com/">
+            <small>Use your final HTTPS domain here so the QR code works from any network. Leave blank during local testing.</small>
+          </label>
+          <label class="field">
+            <span>Lead export email</span>
+            <input name="lead_export_email" type="email" value="{{ config.lead_export_email }}">
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Event date display</span>
+            <input name="event_date_display" value="{{ config.event_date_display }}">
+          </label>
+          <label class="field">
+            <span>Status badge copy</span>
+            <input name="status_badge_copy" value="{{ config.status_badge_copy }}">
+          </label>
+        </div>
+
+        <div class="field-grid three-col">
+          <label class="field">
+            <span>Event name</span>
+            <input name="event_series_name" value="{{ config.event_series_name }}">
+          </label>
+          <label class="field">
+            <span>Partner</span>
+            <input name="event_partner_name" value="{{ config.event_partner_name }}">
+          </label>
+          <label class="field">
+            <span>Support line</span>
+            <input name="event_support_copy" value="{{ config.event_support_copy }}">
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Location line</span>
+            <input name="event_location" value="{{ config.event_location }}">
+          </label>
+          <label class="field checkbox-field">
+            <span>Marketing opt-in field</span>
+            <input name="marketing_opt_in_enabled" type="checkbox" {% if config.marketing_opt_in_enabled %}checked{% endif %}>
+          </label>
+        </div>
+
+        <div class="field-grid three-col">
+          <label class="field">
+            <span>Entry lock (local)</span>
+            <input name="entry_lock_local" value="{{ config.entry_lock_local }}">
+          </label>
+          <label class="field">
+            <span>Final time (local)</span>
+            <input name="final_time_local" value="{{ config.final_time_local }}">
+          </label>
+          <label class="field">
+            <span>Price source</span>
+            <select name="price_provider">
+              <option value="demo" {% if config.price_provider == 'demo' %}selected{% endif %}>Demo (local simulation)</option>
+              <option value="manual" {% if config.price_provider == 'manual' %}selected{% endif %}>Manual</option>
+              <option value="coinbase" {% if config.price_provider == 'coinbase' %}selected{% endif %}>Coinbase</option>
+              <option value="coingecko" {% if config.price_provider == 'coingecko' %}selected{% endif %}>CoinGecko</option>
+            </select>
+            <small>Use Demo for testing. Switch to a live feed before the event.</small>
+          </label>
+        </div>
+
+        <div class="field-grid two-col">
+          <label class="field">
+            <span>Manual price fallback</span>
+            <input name="manual_price" type="number" step="0.01" value="{{ config.manual_price }}">
+          </label>
+          <label class="field">
+            <span>Final reference price override</span>
+            <input name="final_reference_price" type="number" step="0.01" value="{{ config.final_reference_price or '' }}">
+          </label>
+        </div>
+
+        <label class="field">
+          <span>Hero copy</span>
+          <textarea name="hero_copy" rows="4">{{ config.hero_copy }}</textarea>
+        </label>
+        <label class="field">
+          <span>Saturday / why-Bitcoin copy</span>
+          <textarea name="saturday_copy" rows="3">{{ config.saturday_copy }}</textarea>
+        </label>
+        <label class="field">
+          <span>Market awareness copy</span>
+          <textarea name="education_copy" rows="4">{{ config.education_copy }}</textarea>
+        </label>
+        <label class="field">
+          <span>Live market example copy</span>
+          <textarea name="example_copy" rows="4">{{ config.example_copy }}</textarea>
+        </label>
+        <label class="field">
+          <span>Privacy notice</span>
+          <textarea name="privacy_notice" rows="3">{{ config.privacy_notice }}</textarea>
+        </label>
+        <label class="field">
+          <span>Dashboard footer disclaimer</span>
+          <textarea name="dashboard_footer" rows="4">{{ config.dashboard_footer }}</textarea>
+        </label>
+        <label class="field">
+          <span>Rules (one per line)</span>
+          <textarea name="rules" rows="8">{% for rule in config.rules %}{{ rule }}{% if not loop.last %}
+{% endif %}{% endfor %}</textarea>
+        </label>
+        <div class="form-actions">
+          <button type="submit" class="primary-button">Save settings</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="admin-panel glass-card">
+      <div class="panel-head between">
+        <div>
+          <div class="eyebrow">Operational tools</div>
+          <h2>Exports and winner controls</h2>
+        </div>
+      </div>
+      <div class="admin-actions">
+        <a href="/admin/export.csv" class="secondary-button link-button">Download CSV</a>
+        <button class="secondary-button" id="sendSummaryButton" type="button">Send summary email</button>
+      </div>
+      <form id="finalReferenceForm" class="inline-form">
+        <label class="field inline-field">
+          <span>Lock final reference price manually</span>
+          <input name="price" type="number" step="0.01" placeholder="66012.34">
+        </label>
+        <button type="submit" class="secondary-button">Lock price</button>
+      </form>
+      <div class="state-strip" id="adminStateStrip"></div>
+    </section>
+
+    <section class="admin-panel glass-card admin-table-panel">
+      <div class="panel-head between">
+        <div>
+          <div class="eyebrow">Lead review</div>
+          <h2>Participants</h2>
+        </div>
+        <div class="helper-text">Use disqualify only when required by the rules.</div>
+      </div>
+      <div class="admin-table-wrap">
+        <table class="admin-table">
+          <thead>
+            <tr>
+              <th>Name</th>
+              <th>Contact</th>
+              <th>Industry</th>
+              <th>Prediction</th>
+              <th>Direction</th>
+              <th>P/L</th>
+              <th>ROI</th>
+              <th>Updated</th>
+              <th>Status</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody id="participantsTableBody">
+            <tr><td colspan="10" class="empty-row">Loading participants…</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+  {% endif %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+{% if authenticated %}
+<script src="/static/js/admin.js"></script>
+{% endif %}
+{% endblock %}
