@@ -1762,3 +1762,104 @@ legend {
     grid-template-columns: 1fr;
   }
 }
+
+/* V6 overrides */
+.th-sub {
+  display: block;
+  margin-top: 4px;
+  font-size: 0.62rem;
+  letter-spacing: 0.02em;
+  text-transform: none;
+  line-height: 1.2;
+  color: rgba(169, 184, 212, 0.88);
+}
+
+.dashboard-stat-live,
+.countdown-card-live {
+  background:
+    radial-gradient(circle at 82% 22%, rgba(255, 87, 215, 0.16), transparent 34%),
+    linear-gradient(180deg, rgba(14, 29, 56, 0.95), rgba(10, 22, 41, 0.92));
+  border-color: rgba(120, 164, 231, 0.28);
+  box-shadow: 0 0 0 1px rgba(120, 164, 231, 0.08), 0 10px 28px rgba(15, 31, 59, 0.32);
+}
+
+.price-flash-up {
+  animation: priceFlashUp 1.05s ease;
+}
+
+.price-flash-down {
+  animation: priceFlashDown 1.05s ease;
+}
+
+@keyframes priceFlashUp {
+  0% { box-shadow: 0 0 0 0 rgba(62, 227, 158, 0.0), 0 10px 28px rgba(15, 31, 59, 0.32); }
+  30% { box-shadow: 0 0 0 1px rgba(62, 227, 158, 0.22), 0 0 24px rgba(62, 227, 158, 0.32), 0 10px 28px rgba(15, 31, 59, 0.32); }
+  100% { box-shadow: 0 0 0 0 rgba(62, 227, 158, 0.0), 0 10px 28px rgba(15, 31, 59, 0.32); }
+}
+
+@keyframes priceFlashDown {
+  0% { box-shadow: 0 0 0 0 rgba(255, 128, 119, 0.0), 0 10px 28px rgba(15, 31, 59, 0.32); }
+  30% { box-shadow: 0 0 0 1px rgba(255, 128, 119, 0.22), 0 0 24px rgba(255, 128, 119, 0.28), 0 10px 28px rgba(15, 31, 59, 0.32); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 128, 119, 0.0), 0 10px 28px rgba(15, 31, 59, 0.32); }
+}
+
+.confirmation-actions {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.confirmation-actions .link-button.primary-button,
+.form-actions .link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.leaderboard-table-compact {
+  font-size: 0.8rem;
+}
+
+.leaderboard-table-compact th,
+.leaderboard-table-compact td {
+  padding: 9px 7px;
+}
+
+.leaderboard-table-compact th:nth-child(1),
+.leaderboard-table-compact td:nth-child(1) { width: 11%; }
+.leaderboard-table-compact th:nth-child(2),
+.leaderboard-table-compact td:nth-child(2) { width: 14%; }
+.leaderboard-table-compact th:nth-child(3),
+.leaderboard-table-compact td:nth-child(3) { width: 11%; }
+.leaderboard-table-compact th:nth-child(4),
+.leaderboard-table-compact td:nth-child(4) { width: 10%; }
+.leaderboard-table-compact th:nth-child(5),
+.leaderboard-table-compact td:nth-child(5) { width: 8%; }
+.leaderboard-table-compact th:nth-child(6),
+.leaderboard-table-compact td:nth-child(6) { width: 14%; }
+.leaderboard-table-compact th:nth-child(7),
+.leaderboard-table-compact td:nth-child(7) { width: 11%; }
+.leaderboard-table-compact th:nth-child(8),
+.leaderboard-table-compact td:nth-child(8) { width: 7%; }
+.leaderboard-table-compact th:nth-child(9),
+.leaderboard-table-compact td:nth-child(9) { width: 8%; }
+.leaderboard-table-compact th:nth-child(10),
+.leaderboard-table-compact td:nth-child(10) { width: 6%; }
+
+.leaderboard-table-compact td:nth-child(2) {
+  line-height: 1.25;
+}
+
+@media (max-width: 900px) {
+  .confirmation-actions {
+    flex-direction: column;
+  }
+
+  .confirmation-actions .primary-button,
+  .confirmation-actions .secondary-button,
+  .confirmation-actions .link-button,
+  .form-actions .link-button,
+  .form-actions .primary-button {
+    width: 100%;
+  }
+}
