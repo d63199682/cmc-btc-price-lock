@@ -65,7 +65,7 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     "margin_percent": 0.10,
     "spread_per_unit": 15.0,
     "holding_cost": 0.0,
-    "edit_throttle_seconds": 60,
+    "edit_throttle_seconds": 0,
     "marketing_opt_in_enabled": True,
     "seed_demo_data": False,
     "rules": [
@@ -101,7 +101,8 @@ DEFAULT_CONFIG: Dict[str, Any] = {
     ),
     "prize_title": "Win the Black Yamaha RAY-ZR 125cc Hybrid",
     "qr_steps": ["Scan the QR", "Register", "Lock your price", "Watch the live board"],
-    "status_badge_copy": "Live BTC/USD Price · updates every minute",
+    "status_badge_copy": "Live BTC/USD Price · updates every 10 seconds",
+    "leaderboard_size": 5,
     "saturday_copy": (
         "It is Saturday. Most traditional financial markets are closed, while Bitcoin is still open, live, and moving."
     ),
@@ -174,6 +175,7 @@ class SubmissionPayload(BaseModel):
     accept_rules: bool
     consent_admin: bool
     marketing_opt_in: bool = False
+    edit_token: Optional[str] = Field(default="", max_length=128)
 
     @field_validator("display_name")
     @classmethod
@@ -224,6 +226,7 @@ class AdminConfigPayload(BaseModel):
     privacy_notice: str
     dashboard_footer: str
     marketing_opt_in_enabled: bool
+    leaderboard_size: int = Field(default=5, ge=3, le=20)
 
 
 def normalize_email(value: str) -> str:
@@ -312,6 +315,36 @@ INDUSTRY_CHOICES = [
     "Other",
 ]
 
+def column_exists(conn: sqlite3.Connection, table: str, column: str) -> bool:
+    rows = conn.execute(f"PRAGMA table_info({table})").fetchall()
+    return any(row["name"] == column for row in rows)
+
+
+def ensure_column(conn: sqlite3.Connection, table: str, column: str, definition: str) -> None:
+    if not column_exists(conn, table, column):
+        conn.execute(f"ALTER TABLE {table} ADD COLUMN {column} {definition}")
+
+
+def ensure_participant_token(conn: sqlite3.Connection, participant_id: int) -> str:
+    row = conn.execute("SELECT edit_token FROM participants WHERE id = ?", (participant_id,)).fetchone()
+    existing = (row["edit_token"] or "").strip() if row else ""
+    if existing:
+        return existing
+    token = secrets.token_urlsafe(24)
+    conn.execute("UPDATE participants SET edit_token = ? WHERE id = ?", (token, participant_id))
+    conn.commit()
+    return token
+
+
+def get_participant_by_token(conn: sqlite3.Connection, token: str) -> Optional[sqlite3.Row]:
+    cleaned = (token or "").strip()
+    if not cleaned:
+        return None
+    return conn.execute(
+        "SELECT * FROM participants WHERE edit_token = ? AND is_disqualified = 0 LIMIT 1",
+        (cleaned,),
+    ).fetchone()
+
 
 def init_db() -> None:
     with closing(db_connect()) as conn:
@@ -378,6 +411,9 @@ def init_db() -> None:
             CREATE INDEX IF NOT EXISTS idx_activities_created_at ON activities(created_at DESC);
             """
         )
+        ensure_column(conn, "participants", "edit_token", "TEXT")
+        conn.execute("CREATE UNIQUE INDEX IF NOT EXISTS idx_participants_edit_token ON participants(edit_token)")
+
         existing = conn.execute("SELECT json FROM app_config WHERE id = 1").fetchone()
         if not existing:
             conn.execute(
@@ -396,7 +432,19 @@ def get_config(conn: sqlite3.Connection) -> Dict[str, Any]:
     stored = json.loads(row["json"])
     config = DEFAULT_CONFIG | stored
     config["rules"] = list(config.get("rules", []))
-    if set(config.keys()) != set(stored.keys()):
+
+    changed = set(config.keys()) != set(stored.keys())
+    if config.get("edit_throttle_seconds") == 60:
+        config["edit_throttle_seconds"] = 0
+        changed = True
+    if config.get("status_badge_copy") == "Live BTC/USD Price · updates every minute":
+        config["status_badge_copy"] = "Live BTC/USD Price · updates every 10 seconds"
+        changed = True
+    config["leaderboard_size"] = max(3, min(20, int(config.get("leaderboard_size", 5) or 5)))
+    if stored.get("leaderboard_size") != config["leaderboard_size"]:
+        changed = True
+
+    if changed:
         conn.execute(
             "UPDATE app_config SET json = ?, updated_at = ? WHERE id = 1",
             (json.dumps(config), iso(now_bermuda())),
@@ -507,16 +555,17 @@ def maybe_seed_demo_data() -> None:
             cursor = conn.execute(
                 """
                 INSERT INTO participants (
-                    first_name, last_name, display_name, email, phone, country, industry, company, job_title,
+                    first_name, last_name, display_name, edit_token, email, phone, country, industry, company, job_title,
                     product_interest, marketing_opt_in, confirm_resident_age, accept_rules, consent_admin,
                     prediction, prediction_cents, entry_price, direction, margin_required, cost_of_trade,
                     holding_cost, created_at, updated_at, ip_address, user_agent
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 (
                     item["first_name"],
                     item["last_name"],
                     item["display_name"],
+                    secrets.token_urlsafe(12),
                     item["email"],
                     item["phone"],
                     item["country"],
@@ -565,7 +614,7 @@ async def fetch_live_price(conn: sqlite3.Connection, config: Dict[str, Any], for
         latest_at = datetime.fromisoformat(latest["captured_at"])
         if latest_at.tzinfo is None:
             latest_at = latest_at.replace(tzinfo=TZ)
-        if now - latest_at < timedelta(seconds=55):
+        if now - latest_at < timedelta(seconds=9):
             return float(latest["price"]), latest["source"]
 
     price_provider = config.get("price_provider", "demo")
@@ -686,6 +735,7 @@ def calculate_row_metrics(participant: sqlite3.Row, live_price: float, reference
     return {
         "id": participant["id"],
         "display_name": participant["display_name"],
+        "entry_price": round(float(participant["entry_price"]), 2),
         "prediction": round(float(participant["prediction"]), 2),
         "product": "Bitcoin",
         "units": units,
@@ -721,7 +771,8 @@ async def build_public_state(conn: sqlite3.Connection) -> Dict[str, Any]:
     participants = load_active_participants(conn)
     rows = [calculate_row_metrics(p, market_state["live_price"], reference_price) for p in participants]
     rows.sort(key=lambda item: (item["distance"], item["updated_at"]))
-    leaders = rows[:3]
+    leaderboard_size = max(3, min(20, int(config.get("leaderboard_size", 5) or 5)))
+    leaders = rows[:leaderboard_size]
 
     recent = list(
         conn.execute(
@@ -887,6 +938,41 @@ async def api_status() -> JSONResponse:
         )
 
 
+@APP.get("/api/me")
+async def api_me(token: str = "") -> JSONResponse:
+    with closing(db_connect()) as conn:
+        participant = get_participant_by_token(conn, token)
+        if not participant:
+            return JSONResponse({"found": False})
+        state = await current_market_state(conn)
+        return JSONResponse(
+            {
+                "found": True,
+                "participant": {
+                    "first_name": participant["first_name"],
+                    "last_name": participant["last_name"],
+                    "display_name": participant["display_name"],
+                    "email": participant["email"],
+                    "phone": participant["phone"],
+                    "country": participant["country"],
+                    "industry": participant["industry"],
+                    "company": participant["company"] or "",
+                    "job_title": participant["job_title"] or "",
+                    "product_interest": [item for item in (participant["product_interest"] or "").split(",") if item],
+                    "prediction": f"{float(participant['prediction']):.2f}",
+                    "marketing_opt_in": bool(participant["marketing_opt_in"]),
+                    "confirm_resident_age": bool(participant["confirm_resident_age"]),
+                    "accept_rules": bool(participant["accept_rules"]),
+                    "consent_admin": bool(participant["consent_admin"]),
+                    "entry_price": round(float(participant["entry_price"]), 2),
+                    "direction": participant["direction"],
+                },
+                "live_price": round(state["live_price"], 2),
+                "entry_open": state["entry_open"],
+            }
+        )
+
+
 @APP.get("/api/public-state")
 async def api_public_state() -> JSONResponse:
     with closing(db_connect()) as conn:
@@ -950,6 +1036,7 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
         prediction_cents = prediction_to_cents(prediction_decimal)
         live_price, _ = await fetch_live_price(conn, config)
 
+        token_existing = get_participant_by_token(conn, payload.edit_token or "")
         email_match = conn.execute(
             "SELECT * FROM participants WHERE email = ? LIMIT 1", (normalized_email,)
         ).fetchone()
@@ -958,15 +1045,20 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
         ).fetchone()
 
         existing = None
-        if email_match and phone_match:
+        if token_existing:
+            existing = token_existing
+            if email_match and email_match["id"] != existing["id"]:
+                raise HTTPException(status_code=400, detail="That email address is already in use by another entry.")
+            if phone_match and phone_match["id"] != existing["id"]:
+                raise HTTPException(status_code=400, detail="That phone number is already in use by another entry.")
+        elif email_match and phone_match:
             if email_match["id"] != phone_match["id"]:
                 raise HTTPException(status_code=400, detail="We found conflicting contact details. Please see CMC staff for assistance.")
             existing = email_match
-        elif email_match or phone_match:
-            raise HTTPException(
-                status_code=400,
-                detail="An entry already exists with this email or phone number. Please reuse the same details to update your prediction.",
-            )
+        elif email_match:
+            existing = email_match
+        elif phone_match:
+            existing = phone_match
 
         existing_id = existing["id"] if existing else None
         duplicate_price = conn.execute(
@@ -984,8 +1076,8 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
             last_updated = datetime.fromisoformat(existing["updated_at"])
             if last_updated.tzinfo is None:
                 last_updated = last_updated.replace(tzinfo=TZ)
-            throttle_seconds = int(config.get("edit_throttle_seconds", 60))
-            if now - last_updated < timedelta(seconds=throttle_seconds):
+            throttle_seconds = int(config.get("edit_throttle_seconds", 0) or 0)
+            if throttle_seconds > 0 and now - last_updated < timedelta(seconds=throttle_seconds):
                 wait_for = throttle_seconds - int((now - last_updated).total_seconds())
                 raise HTTPException(
                     status_code=429,
@@ -1014,6 +1106,7 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
             "first_name": first_name,
             "last_name": last_name,
             "display_name": display_name,
+            "edit_token": (existing["edit_token"] if existing and existing["edit_token"] else secrets.token_urlsafe(24)),
             "email": normalized_email,
             "phone": normalized_phone,
             "country": payload.country,
@@ -1045,6 +1138,7 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
                     first_name = :first_name,
                     last_name = :last_name,
                     display_name = :display_name,
+                    edit_token = :edit_token,
                     email = :email,
                     phone = :phone,
                     country = :country,
@@ -1076,12 +1170,12 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
             cursor = conn.execute(
                 """
                 INSERT INTO participants (
-                    first_name, last_name, display_name, email, phone, country, industry, company, job_title,
+                    first_name, last_name, display_name, edit_token, email, phone, country, industry, company, job_title,
                     product_interest, marketing_opt_in, confirm_resident_age, accept_rules, consent_admin,
                     prediction, prediction_cents, entry_price, direction, margin_required, cost_of_trade,
                     holding_cost, created_at, updated_at, ip_address, user_agent
                 ) VALUES (
-                    :first_name, :last_name, :display_name, :email, :phone, :country, :industry, :company, :job_title,
+                    :first_name, :last_name, :display_name, :edit_token, :email, :phone, :country, :industry, :company, :job_title,
                     :product_interest, :marketing_opt_in, :confirm_resident_age, :accept_rules, :consent_admin,
                     :prediction, :prediction_cents, :entry_price, :direction, :margin_required, :cost_of_trade,
                     :holding_cost, :created_at, :updated_at, :ip_address, :user_agent
@@ -1105,9 +1199,10 @@ async def api_submit(request: Request, payload: SubmissionPayload) -> JSONRespon
                 "participant": {
                     "id": participant_id,
                     "display_name": values["display_name"],
+                    "edit_token": values["edit_token"],
                     "prediction": f"${values['prediction']:,.2f}",
                     "entry_price": f"${values['entry_price']:,.2f}",
-                    "current_price": f"${values['entry_price']:,.2f}",
+                    "current_price": f"${live_price:,.2f}",
                     "direction": values["direction"],
                     "margin_required": f"${values['margin_required']:,.2f}",
                     "cost_of_trade": f"${values['cost_of_trade']:,.2f}",
