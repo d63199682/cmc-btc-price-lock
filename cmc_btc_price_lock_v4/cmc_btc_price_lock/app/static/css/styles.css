@@ -609,6 +609,10 @@ legend {
   margin: 0;
 }
 
+.interest-helper {
+  margin-top: 12px;
+}
+
 .chip-select-row {
   display: flex;
   flex-wrap: wrap;
