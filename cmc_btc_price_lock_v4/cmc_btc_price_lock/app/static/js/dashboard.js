@@ -19,6 +19,7 @@
     exampleCopy: document.getElementById('dashboardExampleCopy'),
     dashboardFooter: document.getElementById('dashboardFooter'),
     dashboardRules: document.getElementById('dashboardRules'),
+    leaderboardTableWrap: document.getElementById('leaderboardTableWrap'),
   };
 
   const state = {
@@ -103,7 +104,7 @@
     if (phase === 'final' && index === 0) {
       return `<span class="rank-pill winner"><span class="badge-icon" aria-hidden="true">🏆</span> Winner</span>`;
     }
-    if (index === 0) return '<span class="rank-pill leader">Current leader</span>';
+    if (index === 0) return '<span class="rank-pill leader">Leader</span>';
     return `#${index + 1}`;
   };
 
@@ -131,6 +132,11 @@
       }).join('');
     }
 
+    if (els.leaderboardTableWrap) {
+      const visibleRows = Math.max(3, Number(window.CMC_CONFIG?.leaderboard_size || 5));
+      els.leaderboardTableWrap.style.setProperty('--leaderboard-visible-rows', String(visibleRows));
+    }
+
     if (phase === 'final' && typeof finalReferencePrice === 'number') {
       els.leaderboardEyebrow.textContent = 'Official result';
       els.leaderboardTitle.textContent = `Winner locked to the official BTC/USD reference of ${moneyFmt(finalReferencePrice)}`;
@@ -142,7 +148,7 @@
       els.leaderboardSubcopy.textContent = 'Winner will be based on the official 11:00 PM BTC/USD reference price.';
       renderWinnerBadge('Winner updates at 11:00 PM');
     } else {
-      els.leaderboardEyebrow.textContent = 'Current leaders';
+      els.leaderboardEyebrow.textContent = 'Leaders';
       els.leaderboardTitle.textContent = 'Closest to the live BTC/USD market right now';
       els.leaderboardSubcopy.textContent = 'Live BTC/USD Price updates every 10 seconds. Final winner locks at 11:00 PM.';
       renderWinnerBadge('Winner updates at 11:00 PM');
@@ -167,6 +173,10 @@
       els.dashboardFooter.textContent = data.dashboard_footer;
       renderRules(data.rules || []);
       renderTicker(data.ticker || []);
+      if (els.leaderboardTableWrap) {
+        const visibleRows = Math.max(3, Number(data.leaderboard_visible_rows || window.CMC_CONFIG?.leaderboard_size || 5));
+        els.leaderboardTableWrap.style.setProperty('--leaderboard-visible-rows', String(visibleRows));
+      }
       renderLeaders(data.leaders || [], data.phase, data.final_reference_price);
       updateCountdowns();
     } catch (error) {
