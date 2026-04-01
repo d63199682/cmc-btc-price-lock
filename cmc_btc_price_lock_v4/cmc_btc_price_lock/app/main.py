@@ -284,13 +284,13 @@ def validation_message_for(field: Optional[str], raw_message: str) -> str:
 
 
 PRODUCT_INTEREST_CHOICES = [
+    "Private Markets",
     "Crypto",
     "FX",
     "Commodities",
     "Global Indices",
     "Shares",
     "ETFs",
-    "Private Markets",
     "Events & Insights",
 ]
 INDUSTRY_CHOICES = sorted(
@@ -787,8 +787,8 @@ async def build_public_state(conn: sqlite3.Connection) -> Dict[str, Any]:
     participants = load_active_participants(conn)
     rows = [calculate_row_metrics(p, market_state["live_price"], reference_price) for p in participants]
     rows.sort(key=lambda item: (item["distance"], item["updated_at"]))
-    leaderboard_size = max(3, min(20, int(config.get("leaderboard_size", 5) or 5)))
-    leaders = rows[:leaderboard_size]
+    leaderboard_visible_rows = max(3, min(20, int(config.get("leaderboard_size", 5) or 5)))
+    leaders = rows
 
     recent = list(
         conn.execute(
@@ -818,6 +818,7 @@ async def build_public_state(conn: sqlite3.Connection) -> Dict[str, Any]:
         "price_source": market_state["price_source"],
         "final_reference_price": market_state["final_reference_price"],
         "leaders": leaders,
+        "leaderboard_visible_rows": leaderboard_visible_rows,
         "ticker": ticker,
         "entry_lock_iso": iso(times.entry_lock),
         "final_time_iso": iso(times.final_time),
