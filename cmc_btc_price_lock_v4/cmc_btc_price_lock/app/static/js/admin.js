@@ -118,6 +118,7 @@
       privacy_notice: String(formData.get('privacy_notice') || '').trim(),
       dashboard_footer: String(formData.get('dashboard_footer') || '').trim(),
       marketing_opt_in_enabled: formData.get('marketing_opt_in_enabled') === 'on',
+      leaderboard_size: Number(formData.get('leaderboard_size') || 5),
     };
     try {
       const response = await fetch('/api/admin/config', {

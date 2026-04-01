@@ -2,12 +2,14 @@
   const shell = document.querySelector('[data-page="entry"]');
   if (!shell) return;
 
+  const STORAGE_KEY = 'cmcBtcLockEditToken';
   const form = document.getElementById('entryForm');
   const alertBox = document.getElementById('formAlert');
   const submitButton = document.getElementById('submitButton');
   const confirmationPanel = document.getElementById('confirmationPanel');
   const editAgainButton = document.getElementById('editAgainButton');
   const livePriceEl = document.getElementById('livePrice');
+  const livePriceCard = livePriceEl ? livePriceEl.closest('.countdown-card-live') : null;
   const entryCountdownEl = document.getElementById('entryCountdown');
   const finalCountdownEl = document.getElementById('finalCountdown');
   const statusBadgeEl = document.getElementById('statusBadge');
@@ -21,6 +23,9 @@
     tickInterval: null,
     refreshInterval: null,
     displayNameEdited: false,
+    previousLivePrice: Number(String(livePriceEl?.textContent || '').replace(/[$,]/g, '')) || null,
+    editToken: window.localStorage.getItem(STORAGE_KEY) || '',
+    hasSavedProfile: false,
   };
 
   const fieldMessageMap = {
@@ -110,7 +115,7 @@
       el.disabled = !enabled;
     });
     submitButton.disabled = !enabled;
-    submitButton.textContent = enabled ? 'Submit prediction' : 'Entries closed';
+    submitButton.textContent = enabled ? (state.hasSavedProfile ? 'Update prediction' : 'Submit prediction') : 'Entries closed';
   };
 
   const syncCountdowns = () => {
@@ -143,11 +148,84 @@
     if (generated) display.value = generated;
   };
 
+  const flashLivePrice = (nextPrice) => {
+    if (!livePriceCard) return;
+    const numeric = Number(nextPrice);
+    if (!Number.isFinite(numeric)) return;
+    if (state.previousLivePrice === null || numeric === state.previousLivePrice) {
+      state.previousLivePrice = numeric;
+      return;
+    }
+    livePriceCard.classList.remove('price-flash-up', 'price-flash-down');
+    void livePriceCard.offsetWidth;
+    livePriceCard.classList.add(numeric > state.previousLivePrice ? 'price-flash-up' : 'price-flash-down');
+    state.previousLivePrice = numeric;
+  };
+
+  const setCheckboxValue = (name, checked) => {
+    const field = locateField(name);
+    if (field) field.checked = Boolean(checked);
+  };
+
+  const setInterestValues = (values) => {
+    const selected = new Set(values || []);
+    form.querySelectorAll('input[name="product_interest"]').forEach((checkbox) => {
+      checkbox.checked = selected.has(checkbox.value);
+    });
+  };
+
+  const populateParticipant = (participant) => {
+    locateField('first_name').value = participant.first_name || '';
+    locateField('last_name').value = participant.last_name || '';
+    locateField('display_name').value = participant.display_name || '';
+    locateField('email').value = participant.email || '';
+    locateField('phone').value = participant.phone || '';
+    locateField('country').value = participant.country || 'Bermuda';
+    locateField('industry').value = participant.industry || '';
+    locateField('company').value = participant.company || '';
+    locateField('job_title').value = participant.job_title || '';
+    locateField('prediction').value = participant.prediction || '';
+    setCheckboxValue('confirm_resident_age', participant.confirm_resident_age);
+    setCheckboxValue('accept_rules', participant.accept_rules);
+    setCheckboxValue('consent_admin', participant.consent_admin);
+    setCheckboxValue('marketing_opt_in', participant.marketing_opt_in);
+    setInterestValues(participant.product_interest || []);
+    state.displayNameEdited = Boolean((participant.display_name || '').trim());
+    state.hasSavedProfile = true;
+    formHelperEl.textContent = state.entryOpen
+      ? 'Welcome back — your saved details are loaded. Submit again any time before 10:00 PM to update your entry.'
+      : 'Entries are closed. Your saved details are shown for reference.';
+    submitButton.textContent = state.entryOpen ? 'Update prediction' : 'Entries closed';
+  };
+
+  const loadSavedParticipant = async () => {
+    if (!state.editToken) return;
+    try {
+      const response = await fetch(`/api/me?token=${encodeURIComponent(state.editToken)}`, { cache: 'no-store' });
+      if (!response.ok) return;
+      const data = await response.json();
+      if (!data.found || !data.participant) {
+        window.localStorage.removeItem(STORAGE_KEY);
+        state.editToken = '';
+        return;
+      }
+      populateParticipant(data.participant);
+      if (Number.isFinite(Number(data.live_price))) {
+        flashLivePrice(data.live_price);
+        livePriceEl.textContent = moneyFmt(data.live_price);
+      }
+      showAlert('Welcome back — your saved entry has been loaded.', 'success');
+    } catch (error) {
+      console.error(error);
+    }
+  };
+
   const refreshStatus = async () => {
     try {
       const response = await fetch('/api/status', { cache: 'no-store' });
       if (!response.ok) return;
       const data = await response.json();
+      flashLivePrice(data.live_price);
       livePriceEl.textContent = moneyFmt(data.live_price);
       state.entryLockMs = Date.parse(data.entry_lock_iso);
       state.finalMs = Date.parse(data.final_time_iso);
@@ -184,6 +262,7 @@
       accept_rules: Boolean(formData.get('accept_rules')),
       consent_admin: Boolean(formData.get('consent_admin')),
       marketing_opt_in: Boolean(formData.get('marketing_opt_in')),
+      edit_token: state.editToken || '',
     };
   };
 
@@ -195,9 +274,7 @@
         return false;
       }
     }
-    if (!payload.display_name) {
-      payload.display_name = generateDisplayName();
-    }
+    if (!payload.display_name) payload.display_name = generateDisplayName();
     if (!payload.display_name || payload.display_name.length < 2) {
       markFieldError('display_name', fieldMessageMap.display_name);
       return false;
@@ -242,6 +319,7 @@
     document.getElementById('confirmDirectionHelp').textContent = directionHelp;
     document.getElementById('confirmMarginHelp').textContent = `A minimum of ${Number(participant.margin_percent || 10).toFixed(0)}% of the notional value is needed to place this example trade.`;
     document.getElementById('confirmCostHelp').textContent = `On CMC Markets, this example would cost about ${participant.cost_of_trade} in spread, or ${participant.spread_per_unit} per Bitcoin, for exposure to about ${participant.notional_value} of BTC.`;
+    document.getElementById('confirmEntryHelp').textContent = `Live BTC/USD when you submitted this update: ${participant.current_price}.`;
 
     confirmationPanel.hidden = false;
     confirmationPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -274,7 +352,7 @@
     if (!validatePayload(payload)) return;
 
     submitButton.disabled = true;
-    submitButton.textContent = 'Submitting…';
+    submitButton.textContent = state.hasSavedProfile ? 'Updating…' : 'Submitting…';
     try {
       const response = await fetch('/api/submit', {
         method: 'POST',
@@ -287,14 +365,18 @@
         if (fieldErrors.length) {
           const firstError = fieldErrors[0];
           markFieldError(firstError.field, firstError.message || 'Please review this field.');
-        } else if (response.status === 409 || response.status === 429) {
-          markFieldError('prediction', data.detail || 'Please review your prediction and try again.');
         } else {
           showAlert(data.detail || 'Unable to submit your entry right now.', 'error');
           scrollToElement(alertBox);
         }
         return;
       }
+      if (data.participant && data.participant.edit_token) {
+        state.editToken = data.participant.edit_token;
+        state.hasSavedProfile = true;
+        window.localStorage.setItem(STORAGE_KEY, state.editToken);
+      }
+      formHelperEl.textContent = 'Welcome back — your saved details are loaded. Submit again any time before 10:00 PM to update your entry.';
       showAlert(data.message, 'success');
       updateConfirmation(data.participant);
     } catch (error) {
@@ -302,7 +384,7 @@
       scrollToElement(alertBox);
     } finally {
       submitButton.disabled = !state.entryOpen;
-      submitButton.textContent = state.entryOpen ? 'Submit prediction' : 'Entries closed';
+      submitButton.textContent = state.entryOpen ? (state.hasSavedProfile ? 'Update prediction' : 'Submit prediction') : 'Entries closed';
     }
   });
 
@@ -327,12 +409,12 @@
     field.addEventListener('change', () => hydrateDisplayName());
   });
 
-  // Browser autofill often happens after load, so resync a few times.
   [100, 400, 900].forEach((delay) => window.setTimeout(() => hydrateDisplayName(), delay));
 
   setFormEnabled(state.entryOpen);
   syncCountdowns();
   state.tickInterval = setInterval(syncCountdowns, 1000);
-  state.refreshInterval = setInterval(refreshStatus, 60000);
+  state.refreshInterval = setInterval(refreshStatus, 10000);
   refreshStatus();
+  loadSavedParticipant();
 })();

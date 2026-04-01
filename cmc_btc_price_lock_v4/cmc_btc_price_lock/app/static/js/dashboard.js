@@ -4,6 +4,7 @@
 
   const els = {
     livePrice: document.getElementById('boardLivePrice'),
+    livePriceCard: document.querySelector('.dashboard-stat-live'),
     lockCountdown: document.getElementById('boardLockCountdown'),
     finalCountdown: document.getElementById('boardFinalCountdown'),
     lastUpdate: document.getElementById('boardLastUpdate'),
@@ -25,6 +26,7 @@
     entryLockMs: Date.now(),
     finalMs: Date.now(),
     phase: 'open',
+    previousLivePrice: null,
   };
 
   const moneyFmt = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Number(value || 0));
@@ -42,6 +44,19 @@
     if (!isoString) return '—';
     const date = new Date(isoString);
     return date.toLocaleTimeString('en-BM', { hour: 'numeric', minute: '2-digit', second: '2-digit' });
+  };
+
+  const flashLivePrice = (nextPrice) => {
+    if (!els.livePriceCard) return;
+    if (state.previousLivePrice === null || Number(nextPrice) === Number(state.previousLivePrice)) {
+      state.previousLivePrice = Number(nextPrice);
+      return;
+    }
+    els.livePriceCard.classList.remove('price-flash-up', 'price-flash-down');
+    void els.livePriceCard.offsetWidth;
+    const cls = Number(nextPrice) > Number(state.previousLivePrice) ? 'price-flash-up' : 'price-flash-down';
+    els.livePriceCard.classList.add(cls);
+    state.previousLivePrice = Number(nextPrice);
   };
 
   const renderWinnerBadge = (label, winner = false) => {
@@ -94,7 +109,7 @@
 
   const renderLeaders = (leaders, phase, finalReferencePrice) => {
     if (!leaders.length) {
-      els.leaderboardBody.innerHTML = '<tr><td colspan="9" class="empty-row">Waiting for the first predictions…</td></tr>';
+      els.leaderboardBody.innerHTML = '<tr><td colspan="10" class="empty-row">Waiting for the first predictions…</td></tr>';
     } else {
       els.leaderboardBody.innerHTML = leaders.map((row, index) => {
         const winnerClass = phase === 'final' && index === 0 ? 'winner-row' : '';
@@ -103,6 +118,7 @@
           <tr class="${winnerClass}">
             <td class="rank-cell">${rankMarkup(phase, index)}</td>
             <td>${row.display_name}<br><span class="helper-text muted">${moneyFmt(row.distance)} away</span></td>
+            <td>${moneyFmt(row.entry_price)}</td>
             <td>${moneyFmt(row.prediction)}</td>
             <td>${row.direction}</td>
             <td>${moneyFmt(row.position_value)}</td>
@@ -128,7 +144,7 @@
     } else {
       els.leaderboardEyebrow.textContent = 'Current leaders';
       els.leaderboardTitle.textContent = 'Closest to the live BTC/USD market right now';
-      els.leaderboardSubcopy.textContent = 'Live BTC/USD Price updates every minute. Final winner locks at 11:00 PM.';
+      els.leaderboardSubcopy.textContent = 'Live BTC/USD Price updates every 10 seconds. Final winner locks at 11:00 PM.';
       renderWinnerBadge('Winner updates at 11:00 PM');
     }
   };
@@ -142,6 +158,7 @@
       state.entryLockMs = Date.parse(data.entry_lock_iso);
       state.finalMs = Date.parse(data.final_time_iso);
       state.phase = data.phase;
+      flashLivePrice(data.live_price);
       els.livePrice.textContent = moneyFmt(data.live_price);
       els.lastUpdate.textContent = timeFmt(data.now_iso);
       els.entryStateBanner.textContent = data.entry_open ? 'Entries are open — scan the QR code now' : 'Entries are closed — follow the live result';
@@ -158,6 +175,6 @@
   };
 
   refresh();
-  setInterval(refresh, 60000);
+  setInterval(refresh, 10000);
   setInterval(updateCountdowns, 1000);
 })();
