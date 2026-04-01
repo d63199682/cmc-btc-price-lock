@@ -60,7 +60,7 @@
           </label>
         </div>
 
-        <div class="field-grid two-col">
+        <div class="field-grid three-col">
           <label class="field">
             <span>Event date display</span>
             <input name="event_date_display" value="{{ config.event_date_display }}">
@@ -68,6 +68,11 @@
           <label class="field">
             <span>Status badge copy</span>
             <input name="status_badge_copy" value="{{ config.status_badge_copy }}">
+          </label>
+          <label class="field">
+            <span>Leaderboard rows</span>
+            <input name="leaderboard_size" type="number" min="3" max="20" step="1" value="{{ config.leaderboard_size or 5 }}">
+            <small>Set how many live ranks appear on the public board, for example 3, 5, or 10.</small>
           </label>
         </div>
 

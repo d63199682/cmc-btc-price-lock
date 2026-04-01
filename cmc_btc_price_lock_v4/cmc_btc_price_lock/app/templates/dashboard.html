@@ -28,7 +28,7 @@
       <div class="dashboard-stat dashboard-stat-live">
         <span>Live BTC/USD Price</span>
         <strong id="boardLivePrice">—</strong>
-        <small>updates every minute</small>
+        <small>updates every 10 seconds</small>
       </div>
       <div class="dashboard-stat">
         <span>Entries close</span>
@@ -68,7 +68,7 @@
         <div>
           <div class="eyebrow" id="leaderboardEyebrow">Current leaders</div>
           <h2 id="leaderboardTitle">Closest to the live BTC/USD market right now</h2>
-          <p class="leaderboard-subcopy" id="leaderboardSubcopy">Live BTC/USD Price updates every minute. Final winner locks at 11:00 PM.</p>
+          <p class="leaderboard-subcopy" id="leaderboardSubcopy">Live BTC/USD Price updates every 10 seconds. Final winner locks at 11:00 PM.</p>
         </div>
         <div class="topline-badge" id="winnerBadge"><span class="badge-icon" aria-hidden="true">🏆</span> Winner updates at 11:00 PM</div>
       </div>
@@ -83,18 +83,19 @@
             <tr>
               <th>Rank</th>
               <th>Display Name</th>
+              <th><span>Entry Price</span><small class="th-sub">BTC price when predicted</small></th>
               <th>Prediction</th>
               <th>Direction</th>
               <th>Position Value</th>
               <th>Cash Needed</th>
               <th>Cost</th>
-              <th>P/L</th>
+              <th><span>P/L</span><small class="th-sub">Hypothetical trade P/L from entry vs current BTC</small></th>
               <th>ROI</th>
             </tr>
           </thead>
           <tbody id="leaderboardBody">
             <tr>
-              <td colspan="9" class="empty-row">Waiting for the first predictions…</td>
+              <td colspan="10" class="empty-row">Waiting for the first predictions…</td>
             </tr>
           </tbody>
         </table>

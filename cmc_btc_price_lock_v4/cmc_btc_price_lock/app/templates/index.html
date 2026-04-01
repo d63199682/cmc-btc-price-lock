@@ -84,7 +84,7 @@
           <div class="countdown-card countdown-card-live">
             <span>Live BTC/USD Price</span>
             <strong id="livePrice">${{ "{0:,.2f}".format(live_price) }}</strong>
-            <small>updates every minute</small>
+            <small>updates every 10 seconds</small>
           </div>
         </div>
       </div>
@@ -106,7 +106,7 @@
       </div>
 
       <div class="inline-note">
-        Use your real contact details. Your public display name is what will appear on venue screens. Phones and browsers should recognise the fields below for quick autofill.
+        Use your real contact details. Your public display name is what will appear on venue screens. Phones and browsers should recognise the fields below for quick autofill. If you return on the same phone and browser, your saved details will load automatically.
       </div>
 
       <div class="alert" id="formAlert" hidden></div>
@@ -225,7 +225,8 @@
 
         <div class="form-actions form-actions-stacked-mobile">
           <button type="submit" class="primary-button" id="submitButton">Submit prediction</button>
-          <span class="helper-text" id="formHelper">You can update your prediction until 10:00 PM Hamilton time using the same email and phone number.</span>
+          <a href="/dashboard" class="secondary-button link-button" id="bottomViewDashboardButton">View dashboard</a>
+          <span class="helper-text" id="formHelper">You can update your prediction until 10:00 PM Hamilton time. On the same phone and browser, your entry details will be remembered automatically.</span>
         </div>
       </form>
 
@@ -269,8 +270,8 @@
         </div>
         <p class="helper-text">Only your latest valid prediction before 10:00 PM counts. Duplicate price points are not allowed.</p>
         <div class="confirmation-actions">
+          <a href="/dashboard" class="primary-button link-button" id="viewDashboardButton">View the public dashboard</a>
           <button class="secondary-button" id="editAgainButton" type="button">Adjust my prediction</button>
-          <a href="/dashboard" class="secondary-button link-button">View the public dashboard</a>
         </div>
       </section>
     </section>
